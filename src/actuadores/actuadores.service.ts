@@ -1,20 +1,18 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as ping from 'ping';
 import { actuadoresMock } from './mocks/actuadores.mock';
+import { WsGateway } from '../websocket/ws/ws.gateway'; // 👈 importante
 
 @Injectable()
 export class ActuadoresService implements OnModuleInit {
   private readonly logger = new Logger(ActuadoresService.name);
+  private estadosActuales: any[] = [];
 
-  private estadosActuales: any[] = []; // almacena los estados en memoria
+  constructor(private readonly wsGateway: WsGateway) {} // 👈 importante
 
   async onModuleInit() {
     this.logger.log('Iniciando monitoreo automático de actuadores...');
-
-    // Llama inmediatamente al iniciar
     await this.actualizarEstados();
-
-    // Ejecuta cada 10 segundos
     setInterval(() => this.actualizarEstados(), 10_000);
   }
 
@@ -40,10 +38,12 @@ export class ActuadoresService implements OnModuleInit {
     );
 
     this.estadosActuales = resultados;
-    this.logger.log('Estados actualizados (automático)');
+    this.logger.log('Estados actualizados y enviados por WebSocket');
+
+    // 👇 Emitir a frontend
+    this.wsGateway.emitirEstadosActualizados(this.estadosActuales);
   }
 
-  // Para que el controlador acceda a lo más reciente
   obtenerEstados() {
     return this.estadosActuales;
   }

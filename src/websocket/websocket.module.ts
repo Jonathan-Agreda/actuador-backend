@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { WsGateway } from './ws/ws.gateway';
 
 @Module({
-  providers: [WsGateway]
+  providers: [WsGateway],
+  exports: [WsGateway],
 })
 export class WebsocketModule {}
