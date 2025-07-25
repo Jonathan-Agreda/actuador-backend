@@ -30,7 +30,7 @@ export const actuadoresMock = [
     alias: 'Lora C3',
     ip: '192.168.0.100',
     latitud: -2.155,
-    longitud: -79.9004,
+    longitud: -79.8942,
     estado: 'offline',
     relayEncendido: true,
     gateway: {
