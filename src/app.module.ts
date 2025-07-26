@@ -4,9 +4,16 @@ import { AppService } from './app.service';
 import { ActuadoresModule } from './actuadores/actuadores.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { WsGateway } from './websocket/ws/ws.gateway';
+import { PrismaModule } from './data/prisma.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [ActuadoresModule, WebsocketModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    ActuadoresModule,
+    WebsocketModule,
+  ],
   controllers: [AppController],
   providers: [AppService, WsGateway],
 })

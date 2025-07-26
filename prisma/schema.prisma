@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Actuador {
+  id          String   @id @default(uuid())
+  alias       String
+  apiKey      String   @unique
+  latitud     Float
+  longitud    Float
+  ip          String
+  estado      String   @default("offline") // online | offline
+  relayEncendido Boolean @default(false)
+  gatewayId   String?
+  empresaId   String?
+
+  gateway     Gateway? @relation(fields: [gatewayId], references: [id])
+  empresa     Empresa? @relation(fields: [empresaId], references: [id])
+  GrupoActuador GrupoActuador[]
+
+  @@index([gatewayId])
+  @@index([empresaId])
+}
+
+model Gateway {
+  id      String      @id @default(uuid())
+  alias   String
+  ip      String
+  estado  String   @default("ok") // ok | reiniciando | caido
+
+  actuadores Actuador[]
+}
+
+model Empresa {
+  id        String    @id @default(uuid())
+  nombre    String
+  ruc       String?
+  direccion String?
+
+  actuadores Actuador[]
+  grupos     Grupo[]  // ← añade esta línea para completar la relación
+}
+
+model Grupo {
+  id        String      @id @default(uuid())
+  nombre    String
+  empresaId String
+
+  empresa     Empresa  @relation(fields: [empresaId], references: [id])
+  GrupoActuador GrupoActuador[]
+}
+
+
+model GrupoActuador {
+  grupoId    String
+  actuadorId String
+
+  grupo      Grupo    @relation(fields: [grupoId], references: [id])
+  actuador   Actuador @relation(fields: [actuadorId], references: [id])
+
+  @@id([grupoId, actuadorId])
+}

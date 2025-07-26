@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>WebSocket Test</title>
+  </head>
+  <body>
+    <h2>Conexión con WebSocket</h2>
+    <pre id="output">Esperando conexión...</pre>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const socket = io('http://localhost:4000', {
+        transports: ['websocket'],
+      });
+
+      socket.on('connect', () => {
+        document.getElementById('output').textContent +=
+          '🟢 Conectado al WebSocket\n';
+      });
+
+      socket.on('estado-actuadores', (data) => {
+        document.getElementById('output').textContent +=
+          '📡 Estado recibido:\n' + JSON.stringify(data, null, 2) + '\n\n';
+      });
+
+      socket.on('disconnect', () => {
+        document.getElementById('output').textContent +=
+          '🔴 Desconectado del WebSocket\n';
+      });
+    </script>
+  </body>
+</html>
