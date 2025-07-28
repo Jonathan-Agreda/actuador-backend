@@ -2,6 +2,7 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ActuadoresService } from './actuadores.service';
 import { CreateActuadorDto } from './dto/create-actuador.dto';
+import { ReporteEstadoDto } from './dto/reporte-estado.dto';
 
 @Controller('actuadores')
 export class ActuadoresController {
@@ -17,6 +18,11 @@ export class ActuadoresController {
   @Post()
   create(@Body() createActuadorDto: CreateActuadorDto) {
     return this.actuadoresService.create(createActuadorDto);
+  }
+
+  @Post('reportar-estado')
+  async reportarEstado(@Body() dto: ReporteEstadoDto) {
+    return this.actuadoresService.reportarEstado(dto);
   }
 
   // Alternar el relé de un actuador

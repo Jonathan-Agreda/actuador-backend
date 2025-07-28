@@ -3,31 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <title>WebSocket Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        padding: 2rem;
+        color: #222;
+      }
+
+      h2 {
+        color: #1a73e8;
+      }
+
+      pre {
+        background-color: #fff;
+        padding: 1rem;
+        border: 1px solid #ccc;
+        height: 500px;
+        overflow-y: scroll;
+        white-space: pre-wrap;
+      }
+    </style>
   </head>
   <body>
-    <h2>Conexión con WebSocket</h2>
+    <h2>🔌 Conexión con WebSocket</h2>
     <pre id="output">Esperando conexión...</pre>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
+      const output = document.getElementById('output');
       const socket = io('http://localhost:4000', {
         transports: ['websocket'],
       });
 
       socket.on('connect', () => {
-        document.getElementById('output').textContent +=
-          '🟢 Conectado al WebSocket\n';
-      });
-
-      socket.on('estado-actuadores', (data) => {
-        document.getElementById('output').textContent +=
-          '📡 Estado recibido:\n' + JSON.stringify(data, null, 2) + '\n\n';
+        log('🟢 Conectado al WebSocket\n');
       });
 
       socket.on('disconnect', () => {
-        document.getElementById('output').textContent +=
-          '🔴 Desconectado del WebSocket\n';
+        log('🔴 Desconectado del WebSocket\n');
       });
+
+      socket.on('connect_error', (err) => {
+        log(`❌ Error de conexión: ${err.message}\n`);
+      });
+
+      socket.on('estado-actuadores', (data) => {
+        log(`📡 Estado recibido (${data.length} actuador(es)):\n`);
+        data.forEach((a, i) => {
+          log(
+            `#${i + 1} - ${a.alias ?? a.id}:\n` +
+              `🛰️  IP: ${a.ip}\n` +
+              `📶 Estado: ${a.estado}\n` +
+              `🧠 Gateway: ${a.estadoGateway ? '🟢 OK' : '🔴 OFF'}\n` +
+              `⚙️  Relays:\n` +
+              `   ▸ Gateway: ${a.relays?.releGateway}\n` +
+              `   ▸ Válvula: ${a.relays?.releValvula}\n` +
+              `   ▸ Motor1: ${a.relays?.releMotor1}\n` +
+              `   ▸ Motor2: ${a.relays?.releMotor2}\n` +
+              `🕓 ${a.ultimaActualizacion}\n\n`,
+          );
+        });
+      });
+
+      function log(text) {
+        output.textContent += text;
+        if (output.textContent.split('\n').length > 100) {
+          output.textContent = output.textContent
+            .split('\n')
+            .slice(-50)
+            .join('\n');
+        }
+        output.scrollTop = output.scrollHeight;
+      }
     </script>
   </body>
 </html>

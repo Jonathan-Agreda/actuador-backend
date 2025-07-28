@@ -21,7 +21,11 @@ model Actuador {
   longitud    Float
   ip          String
   estado      String   @default("offline") // online | offline
-  relayEncendido Boolean @default(false)
+  // 🆕 Nuevos campos
+  estadoGateway      Boolean   @default(false)
+  relays             Json?
+  ultimaActualizacion DateTime?
+  
   gatewayId   String?
   empresaId   String?
 
