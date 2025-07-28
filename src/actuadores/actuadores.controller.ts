@@ -25,9 +25,23 @@ export class ActuadoresController {
     return this.actuadoresService.reportarEstado(dto);
   }
 
-  // Alternar el relé de un actuador
-  @Post(':id/toggle')
-  toggle(@Param('id') id: string) {
-    return this.actuadoresService.toggle(id);
+  @Get('gateway-ip/:apiKey')
+  async obtenerGatewayIp(@Param('apiKey') apiKey: string) {
+    return this.actuadoresService.obtenerGatewayIp(apiKey);
+  }
+
+  @Post(':id/reiniciar-gateway')
+  reiniciarGateway(@Param('id') id: string) {
+    return this.actuadoresService.reiniciarGateway(id);
+  }
+
+  @Post(':id/encender-motor')
+  encenderMotor(@Param('id') id: string) {
+    return this.actuadoresService.encenderMotor(id);
+  }
+
+  @Post(':id/apagar-motor')
+  apagarMotor(@Param('id') id: string) {
+    return this.actuadoresService.apagarMotor(id);
   }
 }

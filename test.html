@@ -55,12 +55,13 @@
             `#${i + 1} - ${a.alias ?? a.id}:\n` +
               `🛰️  IP: ${a.ip}\n` +
               `📶 Estado: ${a.estado}\n` +
-              `🧠 Gateway: ${a.estadoGateway ? '🟢 OK' : '🔴 OFF'}\n` +
+              `🧠 Gateway: ${a.gateway?.alias ?? 'N/A'} (${a.gateway?.ip ?? '-'}) ${a.estadoGateway ? '🟢 OK' : '🔴 OFF'}\n` +
               `⚙️  Relays:\n` +
               `   ▸ Gateway: ${a.relays?.releGateway}\n` +
               `   ▸ Válvula: ${a.relays?.releValvula}\n` +
               `   ▸ Motor1: ${a.relays?.releMotor1}\n` +
               `   ▸ Motor2: ${a.relays?.releMotor2}\n` +
+              `🔥 Motor encendido: ${a.motorEncendido ? '🟢 SÍ' : '🔴 NO'}\n` +
               `🕓 ${a.ultimaActualizacion}\n\n`,
           );
         });

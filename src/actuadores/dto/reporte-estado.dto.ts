@@ -19,6 +19,12 @@ export class ReporteEstadoDto {
   @IsBoolean()
   gatewayOnline: boolean;
 
+  @IsString()
+  gatewayAlias: string;
+
+  @IsIP()
+  gatewayIp: string;
+
   @IsObject()
   reles: {
     releGateway: boolean;
@@ -26,6 +32,9 @@ export class ReporteEstadoDto {
     releMotor1: boolean;
     releMotor2: boolean;
   };
+
+  @IsBoolean()
+  motorEncendido: boolean;
 
   @IsDateString()
   timestamp: string;

@@ -24,6 +24,7 @@ model Actuador {
   // 🆕 Nuevos campos
   estadoGateway      Boolean   @default(false)
   relays             Json?
+  motorEncendido Boolean @default(false)
   ultimaActualizacion DateTime?
   
   gatewayId   String?
