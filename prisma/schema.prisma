@@ -22,7 +22,7 @@ model Actuador {
   ip          String
   estado      String   @default("offline") // online | offline
   // 🆕 Nuevos campos
-  estadoGateway      Boolean   @default(false)
+  estadoGateway String @default("caido") // "ok" | "reiniciando" | "caido"
   relays             Json?
   motorEncendido Boolean @default(false)
   ultimaActualizacion DateTime?

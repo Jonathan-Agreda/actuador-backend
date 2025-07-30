@@ -16,8 +16,8 @@ export class ReporteEstadoDto {
   @IsString()
   estado: 'online' | 'offline';
 
-  @IsBoolean()
-  gatewayOnline: boolean;
+  @IsString()
+  gatewayOnline: 'ok' | 'caido' | 'reiniciando';
 
   @IsString()
   gatewayAlias: string;

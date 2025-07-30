@@ -111,31 +111,35 @@ export class ActuadoresService {
 
     if (!act) throw new NotFoundException('Actuador no encontrado');
 
-    if (act.estadoGateway)
+    if (act.estadoGateway === 'ok')
       throw new BadRequestException(
         'El gateway está en línea. No se puede reiniciar',
       );
 
     const relays = this.parseRelays(act);
 
-    // Paso 1: APAGAR el releGateway
-    relays.releGateway = false;
+    // 🟡 Paso 1: Cambiar estadoGateway a "reiniciando" + apagar releGateway
     await this.prisma.actuador.update({
       where: { id },
-      data: { relays: relays as any },
+      data: {
+        estadoGateway: 'reiniciando',
+        relays: { ...relays, releGateway: false } as any,
+      },
     });
-    this.logger.debug(`ReleGateway del actuador ${id} APAGADO`);
-    this.emitirEstado(id);
+    this.logger.debug(`Reinicio iniciado - ReleGateway APAGADO`);
+    await this.emitirEstado(id);
 
-    // Paso 2: Encenderlo nuevamente luego de 5s
+    // 🕒 Paso 2: Esperar 5s y volver a estado "ok" + prender releGateway
     setTimeout(async () => {
-      relays.releGateway = true;
       await this.prisma.actuador.update({
         where: { id },
-        data: { relays: relays as any },
+        data: {
+          estadoGateway: 'ok',
+          relays: { ...relays, releGateway: true } as any,
+        },
       });
-      this.logger.debug(`ReleGateway del actuador ${id} ENCENDIDO`);
-      this.emitirEstado(id);
+      this.logger.debug(`Reinicio completado - ReleGateway ENCENDIDO`);
+      await this.emitirEstado(id);
     }, 5000);
 
     return { message: 'Reinicio de gateway iniciado' };
@@ -175,6 +179,7 @@ export class ActuadoresService {
     const relays = this.parseRelays(act);
     relays.releValvula = true;
     relays.releMotor1 = false;
+    relays.releMotor2 = false;
 
     await this.prisma.actuador.update({
       where: { id },
