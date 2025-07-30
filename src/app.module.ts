@@ -6,6 +6,7 @@ import { WebsocketModule } from './websocket/websocket.module';
 import { WsGateway } from './websocket/ws/ws.gateway';
 import { PrismaModule } from './data/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { GruposModule } from './grupos/grupos.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ConfigModule } from '@nestjs/config';
     PrismaModule,
     ActuadoresModule,
     WebsocketModule,
+    GruposModule,
   ],
   controllers: [AppController],
   providers: [AppService, WsGateway],

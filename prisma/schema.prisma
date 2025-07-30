@@ -62,6 +62,9 @@ model Grupo {
   nombre    String
   empresaId String
 
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
   empresa     Empresa  @relation(fields: [empresaId], references: [id])
   GrupoActuador GrupoActuador[]
 }
