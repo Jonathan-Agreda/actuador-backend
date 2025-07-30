@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { GruposService } from './grupos.service';
 import { CreateGrupoDto } from './dto/create-grupo.dto';
 
@@ -14,5 +14,10 @@ export class GruposController {
   @Get()
   findAll() {
     return this.gruposService.obtenerTodos();
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    return this.gruposService.eliminarGrupo(id);
   }
 }

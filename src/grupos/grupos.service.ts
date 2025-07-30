@@ -53,4 +53,16 @@ export class GruposService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async eliminarGrupo(id: string) {
+    // ✅ Eliminar relaciones primero
+    await this.prisma.grupoActuador.deleteMany({
+      where: { grupoId: id },
+    });
+
+    // ✅ Luego eliminar el grupo
+    return await this.prisma.grupo.delete({
+      where: { id },
+    });
+  }
 }
