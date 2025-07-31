@@ -149,6 +149,9 @@ export class ActuadoresService {
     const act = await this.prisma.actuador.findUnique({ where: { id } });
     if (!act) throw new NotFoundException('Actuador no encontrado');
 
+    if (act.motorEncendido)
+      throw new BadRequestException('El motor ya está encendido');
+
     const relays = this.parseRelays(act);
     relays.releValvula = false;
     relays.releMotor1 = true;
@@ -164,7 +167,10 @@ export class ActuadoresService {
       relays.releMotor2 = false;
       await this.prisma.actuador.update({
         where: { id },
-        data: { relays: relays as any },
+        data: {
+          relays: relays as any,
+          motorEncendido: true, // ✅ actualizamos motorEncendido
+        },
       });
       this.emitirEstado(id);
     }, 5000);
@@ -176,6 +182,9 @@ export class ActuadoresService {
     const act = await this.prisma.actuador.findUnique({ where: { id } });
     if (!act) throw new NotFoundException('Actuador no encontrado');
 
+    if (!act.motorEncendido)
+      throw new BadRequestException('El motor ya está apagado');
+
     const relays = this.parseRelays(act);
     relays.releValvula = true;
     relays.releMotor1 = false;
@@ -183,7 +192,10 @@ export class ActuadoresService {
 
     await this.prisma.actuador.update({
       where: { id },
-      data: { relays: relays as any },
+      data: {
+        relays: relays as any,
+        motorEncendido: false, // ✅ actualizamos motorEncendido
+      },
     });
     this.emitirEstado(id);
 
