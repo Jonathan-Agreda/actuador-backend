@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../data/prisma.service';
 import { CreateProgramacionGrupoDto } from './dto/create-programacion-grupo.dto';
 import { format, getDay } from 'date-fns';
 import { ejecutarAccionGrupal } from '../utils/accionGrupal'; // suponiendo que ya lo tienes
+import { UpdateProgramacionDto } from './dto/update-programacion.dto';
 
 @Injectable()
 export class ProgramacionGrupoService {
@@ -27,6 +28,36 @@ export class ProgramacionGrupoService {
   async findAll() {
     return this.prisma.programacionGrupo.findMany({
       include: { grupo: true },
+    });
+  }
+
+  async remove(id: string) {
+    const prog = await this.prisma.programacionGrupo.findUnique({
+      where: { id },
+    });
+
+    if (!prog) {
+      throw new NotFoundException('Programación no encontrada');
+    }
+
+    await this.prisma.programacionGrupo.delete({ where: { id } });
+    return { message: 'Programación eliminada' };
+  }
+
+  async update(id: string, dto: UpdateProgramacionDto) {
+    const prog = await this.prisma.programacionGrupo.findUnique({
+      where: { id },
+    });
+
+    if (!prog) {
+      throw new NotFoundException('Programación no encontrada');
+    }
+
+    return this.prisma.programacionGrupo.update({
+      where: { id },
+      data: {
+        activo: dto.activo,
+      },
     });
   }
 
