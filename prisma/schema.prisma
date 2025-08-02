@@ -67,6 +67,7 @@ model Grupo {
 
   empresa     Empresa  @relation(fields: [empresaId], references: [id])
   GrupoActuador GrupoActuador[]
+  programaciones ProgramacionGrupo[]
 }
 
 
@@ -78,4 +79,21 @@ model GrupoActuador {
   actuador   Actuador @relation(fields: [actuadorId], references: [id])
 
   @@id([grupoId, actuadorId])
+}
+
+
+model ProgramacionGrupo {
+  id          String   @id @default(uuid())
+  grupoId     String
+  grupo       Grupo    @relation(fields: [grupoId], references: [id])
+  
+  horaInicio  String   // formato "HH:mm"
+  horaFin     String   // formato "HH:mm"
+  frecuencia  String   // "una_vez" | "diario" | "dias_especificos"
+  dias        String[] // ["lunes", "martes", ...] si aplica
+
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([grupoId])
 }
