@@ -1,4 +1,3 @@
-// src/programacion-grupo/programacion-grupo.service.ts
 import {
   Injectable,
   Logger,
@@ -19,22 +18,40 @@ export class ProgramacionGrupoService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateProgramacionGrupoDto) {
-    // ✅ Validar programación duplicada
-    const conflicto = await this.prisma.programacionGrupo.findFirst({
+    const nuevasDias = dto.dias ?? [];
+
+    // ✅ Buscar todas las programaciones activas del grupo
+    const programaciones = await this.prisma.programacionGrupo.findMany({
       where: {
         grupoId: dto.grupoId,
         activo: true,
-        horaInicio: dto.horaInicio,
-        horaFin: dto.horaFin,
-        dias: {
-          hasSome: dto.dias ?? [], // al menos un día se repite
-        },
       },
+    });
+
+    const conflicto = programaciones.find((p) => {
+      // Intersección de días
+      const diasSeCruzan =
+        dto.frecuencia === 'diario' || p.frecuencia === 'diario'
+          ? true
+          : dto.frecuencia === 'una_vez' || p.frecuencia === 'una_vez'
+            ? true
+            : p.dias.some((d) => nuevasDias.includes(d));
+
+      if (!diasSeCruzan) return false;
+
+      // Validar cruce de horarios
+      const startA = dto.horaInicio;
+      const endA = dto.horaFin;
+      const startB = p.horaInicio;
+      const endB = p.horaFin;
+
+      const hayInterseccion = startA < endB && endA > startB;
+      return hayInterseccion;
     });
 
     if (conflicto) {
       throw new BadRequestException(
-        'Ya existe una programación activa con los mismos días y horario.',
+        'Ya existe una programación activa con cruce de horario en los mismos días.',
       );
     }
 
@@ -44,7 +61,7 @@ export class ProgramacionGrupoService {
         horaInicio: dto.horaInicio,
         horaFin: dto.horaFin,
         frecuencia: dto.frecuencia,
-        dias: dto.dias ?? [],
+        dias: nuevasDias,
         activo: dto.activo ?? true,
       },
     });
