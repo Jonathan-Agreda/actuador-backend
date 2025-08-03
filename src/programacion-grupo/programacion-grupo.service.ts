@@ -1,9 +1,15 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+// src/programacion-grupo/programacion-grupo.service.ts
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../data/prisma.service';
 import { CreateProgramacionGrupoDto } from './dto/create-programacion-grupo.dto';
 import { format, getDay } from 'date-fns';
-import { ejecutarAccionGrupal } from '../utils/accionGrupal'; // suponiendo que ya lo tienes
+import { ejecutarAccionGrupal } from '../utils/accionGrupal';
 import { UpdateProgramacionDto } from './dto/update-programacion.dto';
 
 @Injectable()
@@ -13,6 +19,25 @@ export class ProgramacionGrupoService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateProgramacionGrupoDto) {
+    // ✅ Validar programación duplicada
+    const conflicto = await this.prisma.programacionGrupo.findFirst({
+      where: {
+        grupoId: dto.grupoId,
+        activo: true,
+        horaInicio: dto.horaInicio,
+        horaFin: dto.horaFin,
+        dias: {
+          hasSome: dto.dias ?? [], // al menos un día se repite
+        },
+      },
+    });
+
+    if (conflicto) {
+      throw new BadRequestException(
+        'Ya existe una programación activa con los mismos días y horario.',
+      );
+    }
+
     return this.prisma.programacionGrupo.create({
       data: {
         grupoId: dto.grupoId,
