@@ -7,5 +7,6 @@ import { WebsocketModule } from '../websocket/websocket.module';
   imports: [WebsocketModule],
   providers: [ActuadoresService],
   controllers: [ActuadoresController],
+  exports: [ActuadoresService],
 })
 export class ActuadoresModule {}

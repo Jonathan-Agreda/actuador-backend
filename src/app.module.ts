@@ -9,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { GruposModule } from './grupos/grupos.module';
 import { ProgramacionGrupoModule } from './programacion-grupo/programacion-grupo.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MqttModule } from './mqtt/mqtt.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     WebsocketModule,
     GruposModule,
     ProgramacionGrupoModule,
+    MqttModule,
   ],
   controllers: [AppController],
   providers: [AppService, WsGateway],

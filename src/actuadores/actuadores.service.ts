@@ -253,4 +253,38 @@ export class ActuadoresService {
 
     return relays;
   }
+
+  async actualizarEstadoPorApiKey(apiKey: string, payload: any) {
+    const actuador = await this.prisma.actuador.findUnique({
+      where: { apiKey },
+    });
+    if (!actuador) return;
+
+    await this.prisma.actuador.update({
+      where: { id: actuador.id },
+      data: {
+        estado: 'online',
+        relays: payload.relays,
+        motorEncendido: payload.motorEncendido,
+        estadoGateway: payload.estadoGateway,
+      },
+    });
+
+    this.wsGateway.emitirEstadosActualizados([
+      {
+        id: actuador.id,
+        alias: actuador.alias,
+        ip: actuador.ip,
+        estado: 'online',
+        estadoGateway: payload.estadoGateway,
+        relays: payload.relays,
+        motorEncendido: payload.motorEncendido,
+        gateway: {
+          alias: payload.gatewayAlias ?? 'N/A',
+          ip: payload.gatewayIp ?? 'N/A',
+        },
+        ultimaActualizacion: new Date(),
+      },
+    ]);
+  }
 }
