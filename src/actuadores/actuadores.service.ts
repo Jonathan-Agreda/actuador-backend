@@ -258,15 +258,22 @@ export class ActuadoresService {
     const actuador = await this.prisma.actuador.findUnique({
       where: { apiKey },
     });
-    if (!actuador) return;
+
+    if (!actuador) {
+      throw new NotFoundException('Actuador no encontrado con esa API key');
+    }
+
+    const ahora = payload.timestamp ? new Date(payload.timestamp) : new Date();
 
     await this.prisma.actuador.update({
       where: { id: actuador.id },
       data: {
-        estado: 'online',
+        ip: payload.ip ?? actuador.ip,
+        estado: payload.estado ?? 'online', // opcional si viene desde el Lora
+        estadoGateway: payload.estadoGateway,
         relays: payload.relays,
         motorEncendido: payload.motorEncendido,
-        estadoGateway: payload.estadoGateway,
+        ultimaActualizacion: ahora,
       },
     });
 
@@ -274,8 +281,8 @@ export class ActuadoresService {
       {
         id: actuador.id,
         alias: actuador.alias,
-        ip: actuador.ip,
-        estado: 'online',
+        ip: payload.ip ?? actuador.ip,
+        estado: payload.estado ?? 'online',
         estadoGateway: payload.estadoGateway,
         relays: payload.relays,
         motorEncendido: payload.motorEncendido,
@@ -283,7 +290,7 @@ export class ActuadoresService {
           alias: payload.gatewayAlias ?? 'N/A',
           ip: payload.gatewayIp ?? 'N/A',
         },
-        ultimaActualizacion: new Date(),
+        ultimaActualizacion: ahora,
       },
     ]);
   }

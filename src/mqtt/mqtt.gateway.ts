@@ -7,18 +7,26 @@ import { ActuadoresService } from '../actuadores/actuadores.service';
 export class MqttGateway {
   private readonly logger = new Logger(MqttGateway.name);
 
-  constructor(private readonly actuadoresService: ActuadoresService) {}
+  constructor(private readonly actuadoresService: ActuadoresService) {
+    this.logger.log('✅ MqttGateway cargado correctamente');
+  }
 
   @EventPattern('actuadores/+/estado')
   async handleEstadoReporte(@Payload() data: any, @Ctx() context: MqttContext) {
-    const topic = context.getTopic(); // actuadores/abc123/estado
+    const topic = context.getTopic(); // Ej: actuadores/55cd2d46.../estado
     const apiKey = topic.split('/')[1];
 
-    this.logger.log(
-      `📩 MQTT estado recibido - apiKey: ${apiKey}, payload: ${JSON.stringify(data)}`,
-    );
+    this.logger.log('📩 MQTT estado recibido');
+    this.logger.debug(`Topic: ${topic}`);
+    this.logger.debug(`apiKey extraída: ${apiKey}`);
+    this.logger.debug(`Payload: ${JSON.stringify(data)}`);
 
-    // Aquí llamamos a la lógica de actualización
-    await this.actuadoresService.actualizarEstadoPorApiKey(apiKey, data);
+    try {
+      await this.actuadoresService.actualizarEstadoPorApiKey(apiKey, data);
+    } catch (err) {
+      this.logger.error(
+        `❌ Error procesando MQTT estado de ${apiKey}: ${err.message}`,
+      );
+    }
   }
 }
