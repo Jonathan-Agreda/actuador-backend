@@ -1,10 +1,10 @@
 // src/mqtt/mqtt.module.ts
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MqttService } from './mqtt.service';
 import { ActuadoresModule } from '../actuadores/actuadores.module';
 
 @Module({
-  imports: [ActuadoresModule],
+  imports: [forwardRef(() => ActuadoresModule)],
   providers: [MqttService],
   exports: [MqttService],
 })

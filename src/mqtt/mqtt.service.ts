@@ -1,4 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  forwardRef,
+  Inject,
+} from '@nestjs/common';
 import { connect, MqttClient } from 'mqtt';
 import { ConfigService } from '@nestjs/config';
 import { ActuadoresService } from '../actuadores/actuadores.service';
@@ -10,6 +16,7 @@ export class MqttService implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => ActuadoresService))
     private readonly actuadoresService: ActuadoresService,
   ) {}
 
