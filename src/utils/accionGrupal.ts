@@ -1,7 +1,10 @@
+// src/utils/accionGrupal.ts
+import { MqttService } from '../mqtt/mqtt.service';
 import { PrismaService } from '../data/prisma.service';
 
 export async function ejecutarAccionGrupal(
   prisma: PrismaService,
+  mqttService: MqttService,
   grupoId: string,
   accion: 'encender' | 'apagar',
 ) {
@@ -20,16 +23,17 @@ export async function ejecutarAccionGrupal(
 
   for (const ga of grupo.GrupoActuador) {
     const actuador = ga.actuador;
-    const url =
-      accion === 'encender'
-        ? `http://${actuador.ip}/encender-motor`
-        : `http://${actuador.ip}/apagar-motor`;
+    const topic = `actuadores/${actuador.apiKey}/comando`; // ✅ corregido
+    const payload = { tipo: `${accion}-motor` }; // ✅ corregido
 
     try {
-      await fetch(url, { method: 'POST' });
-      console.log(`✅ ${accion} ${actuador.alias}`);
-    } catch (error) {
-      console.error(`❌ Error con ${actuador.alias}:`, error.message);
+      await mqttService.publish(topic, payload);
+      console.log(`✅ MQTT comando enviado: ${accion} ${actuador.alias}`);
+    } catch (error: any) {
+      console.error(
+        `❌ Error al enviar MQTT a ${actuador.alias}:`,
+        error.message,
+      );
     }
   }
 }

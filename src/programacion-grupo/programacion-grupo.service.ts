@@ -10,17 +10,30 @@ import { CreateProgramacionGrupoDto } from './dto/create-programacion-grupo.dto'
 import { format, getDay } from 'date-fns';
 import { ejecutarAccionGrupal } from '../utils/accionGrupal';
 import { UpdateProgramacionDto } from './dto/update-programacion.dto';
+import { MqttService } from '../mqtt/mqtt.service';
+
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+import * as isBetween from 'dayjs/plugin/isBetween';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(isBetween);
+dayjs.tz.setDefault('America/Guayaquil');
 
 @Injectable()
 export class ProgramacionGrupoService {
   private readonly logger = new Logger(ProgramacionGrupoService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mqttService: MqttService,
+  ) {}
 
   async create(dto: CreateProgramacionGrupoDto) {
     const nuevasDias = dto.dias ?? [];
 
-    // ✅ Buscar todas las programaciones activas del grupo
     const programaciones = await this.prisma.programacionGrupo.findMany({
       where: {
         grupoId: dto.grupoId,
@@ -29,7 +42,6 @@ export class ProgramacionGrupoService {
     });
 
     const conflicto = programaciones.find((p) => {
-      // Intersección de días
       const diasSeCruzan =
         dto.frecuencia === 'diario' || p.frecuencia === 'diario'
           ? true
@@ -39,7 +51,6 @@ export class ProgramacionGrupoService {
 
       if (!diasSeCruzan) return false;
 
-      // Validar cruce de horarios
       const startA = dto.horaInicio;
       const endA = dto.horaFin;
       const startB = p.horaInicio;
@@ -106,9 +117,10 @@ export class ProgramacionGrupoService {
   // 🕒 Cron que corre cada minuto
   @Cron('* * * * *')
   async ejecutarProgramaciones() {
-    const ahora = new Date();
-    const horaActual = format(ahora, 'HH:mm');
-    const diaActual = this.obtenerNombreDia(getDay(ahora)); // ej: "lunes"
+    const ahora = dayjs().tz();
+    const horaActual = ahora.format('HH:mm');
+    const diaActual = this.obtenerNombreDia(getDay(ahora.toDate()));
+
     this.logger.log(
       `⌛ [CRON] Evaluando programaciones - hora actual: ${horaActual}, día: ${diaActual}`,
     );
@@ -118,30 +130,42 @@ export class ProgramacionGrupoService {
     });
 
     for (const prog of programaciones) {
-      const debeEjecutar =
-        (prog.frecuencia === 'diario' ||
-          (prog.frecuencia === 'dias_especificos' &&
-            prog.dias.includes(diaActual))) &&
-        prog.horaInicio === horaActual;
+      const frecuenciaValida =
+        prog.frecuencia === 'diario' ||
+        (prog.frecuencia === 'dias_especificos' &&
+          prog.dias.includes(diaActual));
 
-      const debeApagar =
-        (prog.frecuencia === 'diario' ||
-          (prog.frecuencia === 'dias_especificos' &&
-            prog.dias.includes(diaActual))) &&
-        prog.horaFin === horaActual;
+      if (!frecuenciaValida) continue;
 
-      if (debeEjecutar) {
+      const hoy = ahora.format('YYYY-MM-DD');
+      const inicio = dayjs.tz(`${hoy}T${prog.horaInicio}`, 'America/Guayaquil');
+      const fin = dayjs.tz(`${hoy}T${prog.horaFin}`, 'America/Guayaquil');
+
+      const esInicio = horaActual === prog.horaInicio;
+      const esFin = horaActual === prog.horaFin;
+
+      if (esInicio) {
         this.logger.log(
           `⏱ Ejecutando encendido de motor para grupo ${prog.grupoId}`,
         );
-        await ejecutarAccionGrupal(this.prisma, prog.grupoId, 'encender');
+        await ejecutarAccionGrupal(
+          this.prisma,
+          this.mqttService,
+          prog.grupoId,
+          'encender',
+        );
       }
 
-      if (debeApagar) {
+      if (esFin) {
         this.logger.log(
           `⏱ Ejecutando apagado de motor para grupo ${prog.grupoId}`,
         );
-        await ejecutarAccionGrupal(this.prisma, prog.grupoId, 'apagar');
+        await ejecutarAccionGrupal(
+          this.prisma,
+          this.mqttService,
+          prog.grupoId,
+          'apagar',
+        );
       }
     }
   }
