@@ -20,28 +20,15 @@ export class ActuadoresController {
     return this.actuadoresService.create(createActuadorDto);
   }
 
+  // Reporte de estado desde Lora (MQTT o HTTP)
   @Post('reportar-estado')
   async reportarEstado(@Body() dto: ReporteEstadoDto) {
     return this.actuadoresService.reportarEstado(dto);
   }
 
+  // Obtener IP del gateway asociado (consulta por apiKey)
   @Get('gateway-ip/:apiKey')
   async obtenerGatewayIp(@Param('apiKey') apiKey: string) {
     return this.actuadoresService.obtenerGatewayIp(apiKey);
-  }
-
-  @Post(':id/reiniciar-gateway')
-  reiniciarGateway(@Param('id') id: string) {
-    return this.actuadoresService.reiniciarGateway(id);
-  }
-
-  @Post(':id/encender-motor')
-  encenderMotor(@Param('id') id: string) {
-    return this.actuadoresService.encenderMotor(id);
-  }
-
-  @Post(':id/apagar-motor')
-  apagarMotor(@Param('id') id: string) {
-    return this.actuadoresService.apagarMotor(id);
   }
 }
