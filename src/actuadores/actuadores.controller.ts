@@ -2,7 +2,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ActuadoresService } from './actuadores.service';
 import { CreateActuadorDto } from './dto/create-actuador.dto';
-import { ReporteEstadoDto } from './dto/reporte-estado.dto';
 
 @Controller('actuadores')
 export class ActuadoresController {

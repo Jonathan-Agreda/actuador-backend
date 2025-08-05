@@ -10,7 +10,6 @@ import { PrismaService } from '../data/prisma.service';
 import { WsGateway } from '../websocket/ws/ws.gateway';
 import { ConfigService } from '@nestjs/config';
 import { CreateActuadorDto } from './dto/create-actuador.dto';
-import { ReporteEstadoDto } from './dto/reporte-estado.dto';
 import { Relays } from './types/relays.type';
 import { BadRequestException } from '@nestjs/common';
 import { MqttService } from '../mqtt/mqtt.service';
@@ -48,48 +47,6 @@ export class ActuadoresService {
         },
       },
     });
-  }
-
-  async reportarEstado(dto: ReporteEstadoDto) {
-    const actuador = await this.prisma.actuador.findUnique({
-      where: { apiKey: dto.apiKey },
-    });
-
-    if (!actuador) {
-      throw new NotFoundException('Actuador no encontrado con esa API key');
-    }
-
-    await this.prisma.actuador.update({
-      where: { id: actuador.id },
-      data: {
-        ip: dto.ip,
-        estado: dto.estado,
-        estadoGateway: dto.gatewayOnline,
-        relays: dto.reles,
-        motorEncendido: dto.motorEncendido,
-        ultimaActualizacion: new Date(dto.timestamp),
-      },
-    });
-
-    // WebSocket opcional
-    this.wsGateway.emitirEstadosActualizados([
-      {
-        id: actuador.id,
-        alias: actuador.alias,
-        ip: dto.ip,
-        estado: dto.estado,
-        estadoGateway: dto.gatewayOnline,
-        relays: dto.reles,
-        motorEncendido: dto.motorEncendido,
-        gateway: {
-          alias: dto.gatewayAlias,
-          ip: dto.gatewayIp,
-        },
-        ultimaActualizacion: new Date(dto.timestamp),
-      },
-    ]);
-
-    return { message: 'Estado actualizado correctamente' };
   }
 
   async obtenerGatewayIp(apiKey: string) {
