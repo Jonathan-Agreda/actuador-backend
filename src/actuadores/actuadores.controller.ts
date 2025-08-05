@@ -24,4 +24,22 @@ export class ActuadoresController {
   async obtenerGatewayIp(@Param('apiKey') apiKey: string) {
     return this.actuadoresService.obtenerGatewayIp(apiKey);
   }
+
+  // ✅ Restaurado: Encender motor
+  @Post(':id/encender-motor')
+  encenderMotor(@Param('id') id: string) {
+    return this.actuadoresService.encenderMotor(id);
+  }
+
+  // ✅ Restaurado: Apagar motor
+  @Post(':id/apagar-motor')
+  apagarMotor(@Param('id') id: string) {
+    return this.actuadoresService.apagarMotor(id);
+  }
+
+  // ✅ Restaurado: Reiniciar gateway
+  @Post(':id/reiniciar-gateway')
+  reiniciarGateway(@Param('id') id: string) {
+    return this.actuadoresService.reiniciarGateway(id);
+  }
 }
