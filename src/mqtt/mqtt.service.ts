@@ -57,4 +57,15 @@ export class MqttService implements OnModuleInit {
       this.logger.error(`❌ Error del cliente MQTT: ${err.message}`);
     });
   }
+
+  publish(topic: string, payload: any) {
+    const message = JSON.stringify(payload);
+    this.client?.publish(topic, message, {}, (err) => {
+      if (err) {
+        this.logger.error(`❌ Error al publicar en ${topic}: ${err.message}`);
+      } else {
+        this.logger.log(`📤 Publicado en ${topic}: ${message}`);
+      }
+    });
+  }
 }

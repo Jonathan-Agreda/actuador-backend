@@ -13,6 +13,7 @@ import { CreateActuadorDto } from './dto/create-actuador.dto';
 import { ReporteEstadoDto } from './dto/reporte-estado.dto';
 import { Relays } from './types/relays.type';
 import { BadRequestException } from '@nestjs/common';
+import { MqttService } from '../mqtt/mqtt.service';
 
 @Injectable()
 export class ActuadoresService {
@@ -22,6 +23,7 @@ export class ActuadoresService {
     private readonly prisma: PrismaService,
     private readonly wsGateway: WsGateway,
     private readonly configService: ConfigService,
+    private readonly mqttService: MqttService,
   ) {}
 
   /** Obtiene todos los actuadores registrados */
@@ -108,7 +110,6 @@ export class ActuadoresService {
 
   async reiniciarGateway(id: string) {
     const act = await this.prisma.actuador.findUnique({ where: { id } });
-
     if (!act) throw new NotFoundException('Actuador no encontrado');
 
     if (act.estadoGateway === 'ok')
@@ -116,33 +117,17 @@ export class ActuadoresService {
         'El gateway está en línea. No se puede reiniciar',
       );
 
-    const relays = this.parseRelays(act);
+    // Construimos el comando MQTT
+    const topic = `actuadores/${act.apiKey}/comando`;
+    const payload = { tipo: 'reiniciar-gateway' };
 
-    // 🟡 Paso 1: Cambiar estadoGateway a "reiniciando" + apagar releGateway
-    await this.prisma.actuador.update({
-      where: { id },
-      data: {
-        estadoGateway: 'reiniciando',
-        relays: { ...relays, releGateway: false } as any,
-      },
-    });
-    this.logger.debug(`Reinicio iniciado - ReleGateway APAGADO`);
-    await this.emitirEstado(id);
+    // Publicamos el comando por MQTT
+    this.mqttService.publish(topic, payload);
+    this.logger.debug(
+      `🟡 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
+    );
 
-    // 🕒 Paso 2: Esperar 5s y volver a estado "ok" + prender releGateway
-    setTimeout(async () => {
-      await this.prisma.actuador.update({
-        where: { id },
-        data: {
-          estadoGateway: 'ok',
-          relays: { ...relays, releGateway: true } as any,
-        },
-      });
-      this.logger.debug(`Reinicio completado - ReleGateway ENCENDIDO`);
-      await this.emitirEstado(id);
-    }, 5000);
-
-    return { message: 'Reinicio de gateway iniciado' };
+    return { message: 'Comando enviado para reiniciar gateway' };
   }
 
   async encenderMotor(id: string) {
@@ -152,30 +137,17 @@ export class ActuadoresService {
     if (act.motorEncendido)
       throw new BadRequestException('El motor ya está encendido');
 
-    const relays = this.parseRelays(act);
-    relays.releValvula = false;
-    relays.releMotor1 = true;
-    relays.releMotor2 = true;
+    // Construimos el comando MQTT
+    const topic = `actuadores/${act.apiKey}/comando`;
+    const payload = { tipo: 'encender-motor' };
 
-    await this.prisma.actuador.update({
-      where: { id },
-      data: { relays: relays as any },
-    });
-    this.emitirEstado(id);
+    // Publicamos el comando por MQTT
+    this.mqttService.publish(topic, payload);
+    this.logger.debug(
+      `🟢 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
+    );
 
-    setTimeout(async () => {
-      relays.releMotor2 = false;
-      await this.prisma.actuador.update({
-        where: { id },
-        data: {
-          relays: relays as any,
-          motorEncendido: true, // ✅ actualizamos motorEncendido
-        },
-      });
-      this.emitirEstado(id);
-    }, 5000);
-
-    return { message: 'Encendido de motor ejecutado' };
+    return { message: 'Comando enviado para encender motor' };
   }
 
   async apagarMotor(id: string) {
@@ -185,21 +157,17 @@ export class ActuadoresService {
     if (!act.motorEncendido)
       throw new BadRequestException('El motor ya está apagado');
 
-    const relays = this.parseRelays(act);
-    relays.releValvula = true;
-    relays.releMotor1 = false;
-    relays.releMotor2 = false;
+    // Construimos el comando MQTT
+    const topic = `actuadores/${act.apiKey}/comando`;
+    const payload = { tipo: 'apagar-motor' };
 
-    await this.prisma.actuador.update({
-      where: { id },
-      data: {
-        relays: relays as any,
-        motorEncendido: false, // ✅ actualizamos motorEncendido
-      },
-    });
-    this.emitirEstado(id);
+    // Publicamos el comando por MQTT
+    this.mqttService.publish(topic, payload);
+    this.logger.debug(
+      `🟠 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
+    );
 
-    return { message: 'Apagado de motor ejecutado' };
+    return { message: 'Comando enviado para apagar motor' };
   }
 
   private async emitirEstado(actuadorId: string) {
