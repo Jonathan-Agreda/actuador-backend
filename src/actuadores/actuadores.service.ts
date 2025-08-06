@@ -79,7 +79,7 @@ export class ActuadoresService {
     const payload = { tipo: 'reiniciar-gateway' };
 
     // Publicamos el comando por MQTT
-    this.mqttService.publish(topic, payload);
+    this.mqttService.publish(topic, payload, 1);
     this.logger.debug(
       `🟡 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
     );
@@ -99,7 +99,7 @@ export class ActuadoresService {
     const payload = { tipo: 'encender-motor' };
 
     // Publicamos el comando por MQTT
-    this.mqttService.publish(topic, payload);
+    this.mqttService.publish(topic, payload, 1);
     this.logger.debug(
       `🟢 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
     );
@@ -119,7 +119,7 @@ export class ActuadoresService {
     const payload = { tipo: 'apagar-motor' };
 
     // Publicamos el comando por MQTT
-    this.mqttService.publish(topic, payload);
+    this.mqttService.publish(topic, payload, 1);
     this.logger.debug(
       `🟠 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
     );

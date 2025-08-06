@@ -27,7 +27,7 @@ export async function ejecutarAccionGrupal(
     const payload = { tipo: `${accion}-motor` }; // ✅ corregido
 
     try {
-      await mqttService.publish(topic, payload);
+      await mqttService.publish(topic, payload, 1);
       console.log(`✅ MQTT comando enviado: ${accion} ${actuador.alias}`);
     } catch (error: any) {
       console.error(
