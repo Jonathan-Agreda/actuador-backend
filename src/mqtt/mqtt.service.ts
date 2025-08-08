@@ -116,6 +116,10 @@ export class MqttService implements OnModuleInit {
         // 4) Normalizar (defaults + timestamp epoch/ms)
         const normalized = normalizeEstadoPayload(data);
 
+        if (normalized.estado === 'offline') {
+          this.logger.warn(`🔕 Offline recibido para ${apiKey}`);
+        }
+
         this.logger.log(`📩 Estado MQTT recibido de ${apiKey}`);
         this.logger.debug(`Topic: ${topic}`);
         this.logger.debug(`Payload: ${JSON.stringify(normalized)}`);

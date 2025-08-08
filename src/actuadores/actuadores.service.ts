@@ -190,40 +190,54 @@ export class ActuadoresService {
   }
 
   /** Actualiza estado al recibir reporte de un Lora (MQTT o HTTP) */
+  // src/actuadores/actuadores.service.ts
   async actualizarEstadoPorApiKey(apiKey: string, payload: EstadoLoraPayload) {
     const actuador = await this.prisma.actuador.findUnique({
       where: { apiKey },
     });
-    if (!actuador) {
+    if (!actuador)
       throw new NotFoundException('Actuador no encontrado con esa API key');
-    }
 
     const ahora =
-      payload?.timestamp != null
-        ? new Date(
-            typeof payload.timestamp === 'number'
-              ? payload.timestamp
-              : Date.parse(payload.timestamp),
-          )
-        : new Date();
+      payload?.estado === 'offline'
+        ? new Date() // ← para LWT usamos hora del servidor
+        : payload?.timestamp != null
+          ? new Date(
+              typeof payload.timestamp === 'number'
+                ? payload.timestamp
+                : Date.parse(payload.timestamp),
+            )
+          : new Date();
 
-    // Solo campos permitidos (sanitización)
     const dataUpdate: any = {
       ultimaActualizacion: ahora,
       estado: payload.estado ?? 'online',
-      estadoGateway: payload.estadoGateway,
-      relays: payload.relays,
-      motorEncendido: payload.motorEncendido,
+      estadoGateway:
+        payload.estado === 'offline' ? 'caido' : payload.estadoGateway,
+      relays:
+        payload.estado === 'offline'
+          ? {
+              releGateway: false,
+              releValvula: false,
+              releMotor1: false,
+              releMotor2: false,
+            }
+          : payload.relays,
+      motorEncendido:
+        payload.estado === 'offline' ? false : payload.motorEncendido,
     };
-
     if (payload.ip) dataUpdate.ip = payload.ip;
+
+    // ⚠️ Evitar trabajo inútil si ya está offline y vuelve a llegar offline
+    if (actuador.estado === 'offline' && dataUpdate.estado === 'offline') {
+      return; // ya está marcado, no spameamos DB/WS
+    }
 
     await this.prisma.actuador.update({
       where: { id: actuador.id },
       data: dataUpdate,
     });
 
-    // Emitimos hacia el frontend (mantengo tu estructura actual)
     this.wsGateway.emitirEstadosActualizados([
       {
         id: actuador.id,
