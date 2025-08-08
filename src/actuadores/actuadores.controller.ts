@@ -1,7 +1,18 @@
 // src/actuadores/actuadores.controller.ts
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UnauthorizedException,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ActuadoresService } from './actuadores.service';
 import { CreateActuadorDto } from './dto/create-actuador.dto';
+import { ReportarEstadoDto } from './dto/reportar-estado.dto';
 
 @Controller('actuadores')
 export class ActuadoresController {
@@ -41,5 +52,16 @@ export class ActuadoresController {
   @Post(':id/reiniciar-gateway')
   reiniciarGateway(@Param('id') id: string) {
     return this.actuadoresService.reiniciarGateway(id);
+  }
+
+  @Post('estado')
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  async reportarEstado(
+    @Headers('x-api-key') apiKey: string,
+    @Body() body: ReportarEstadoDto,
+  ) {
+    if (!apiKey) throw new UnauthorizedException('Falta x-api-key');
+    await this.actuadoresService.actualizarEstadoPorApiKey(apiKey, body);
+    return { message: 'Estado recibido' };
   }
 }

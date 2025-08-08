@@ -1,3 +1,4 @@
+// src/mqtt/mqtt.service.ts
 import {
   Injectable,
   Logger,
@@ -8,6 +9,10 @@ import {
 import { connect, MqttClient } from 'mqtt';
 import { ConfigService } from '@nestjs/config';
 import { ActuadoresService } from '../actuadores/actuadores.service';
+import {
+  isValidEstadoPayload,
+  normalizeEstadoPayload,
+} from '../actuadores/validators/estado-lora.validator';
 
 @Injectable()
 export class MqttService implements OnModuleInit {
@@ -25,53 +30,107 @@ export class MqttService implements OnModuleInit {
       this.configService.get<string>('MQTT_BROKER_URL') ||
       'mqtt://localhost:1883';
 
-    this.client = connect(brokerUrl);
+    this.client = connect(brokerUrl, {
+      reconnectPeriod: 2000,
+      keepalive: 60,
+    });
 
     this.client.on('connect', () => {
-      this.logger.log('🟢 Conectado al broker MQTT');
+      this.logger.log(`🟢 Conectado al broker MQTT: ${brokerUrl}`);
 
-      // ✅ Suscribirse al topic con wildcard
-      this.client.subscribe('actuadores/+/estado', (err) => {
+      // Suscripción a reportes de estado: actuadores/<apiKey>/estado
+      this.client.subscribe('actuadores/+/estado', { qos: 1 }, (err) => {
         if (err) {
-          this.logger.error(`❌ Error al suscribirse al topic: ${err.message}`);
+          this.logger.error(`❌ Error al suscribirse: ${err.message}`);
         } else {
-          this.logger.log('📡 Suscrito a topic actuadores/+/estado');
+          this.logger.log('📡 Suscrito a: actuadores/+/estado (QoS 1)');
         }
       });
     });
 
-    // ✅ Escuchar mensajes
-    this.client.on('message', async (topic, payloadBuffer) => {
-      const payloadStr = payloadBuffer.toString();
-      const apiKey = topic.split('/')[1]; // ej: actuadores/000/estado
+    this.client.on('reconnect', () =>
+      this.logger.warn('🔄 Reintentando conexión MQTT...'),
+    );
+    this.client.on('close', () => this.logger.warn('🛑 Conexión MQTT cerrada'));
+    this.client.on('error', (err) =>
+      this.logger.error(`❌ Error MQTT: ${err.message}`),
+    );
 
-      try {
-        const data = JSON.parse(payloadStr);
-
-        this.logger.log(`📩 MQTT estado recibido de ${apiKey}`);
-        this.logger.debug(`Topic: ${topic}`);
-        this.logger.debug(`Payload: ${JSON.stringify(data)}`);
-
-        await this.actuadoresService.actualizarEstadoPorApiKey(apiKey, data);
-      } catch (err) {
-        this.logger.error(
-          `❌ Error procesando mensaje de ${apiKey}: ${err.message}`,
-        );
-      }
-    });
-
-    this.client.on('error', (err) => {
-      this.logger.error(`❌ Error del cliente MQTT: ${err.message}`);
-    });
+    this.registerMessageHandler();
   }
 
+  /** Publicador genérico (mantiene tu firma con qos opcional) */
   publish(topic: string, payload: any, qos: 0 | 1 = 0) {
-    const message = JSON.stringify(payload);
-    this.client?.publish(topic, message, { qos }, (err) => {
+    const message =
+      typeof payload === 'string' ? payload : JSON.stringify(payload);
+    if (!this.client || !this.client.connected) {
+      this.logger.warn(
+        `⚠️ Cliente MQTT no conectado. No se publica en ${topic}`,
+      );
+      return;
+    }
+    this.client.publish(topic, message, { qos }, (err) => {
       if (err) {
         this.logger.error(`❌ Error al publicar en ${topic}: ${err.message}`);
       } else {
         this.logger.log(`📤 Publicado en ${topic}: ${message}`);
+      }
+    });
+  }
+
+  /** Manejo de mensajes entrantes */
+  private registerMessageHandler() {
+    this.client.on('message', async (topic, payloadBuffer) => {
+      // Patrón esperado: actuadores/<apiKey>/estado
+      const match = /^actuadores\/([^/]+)\/estado$/.exec(topic);
+      if (!match) return;
+
+      const apiKey = match[1];
+      const payloadStr = payloadBuffer.toString();
+
+      try {
+        // 1) Validar que la apiKey exista en BD
+        const exists = await this.actuadoresService.getActuadorByApiKey(apiKey);
+        if (!exists) {
+          this.logger.warn(`🔒 apiKey inválida: ${apiKey}. Ignorando mensaje.`);
+          return;
+        }
+
+        // 2) Parsear JSON con manejo de error
+        let data: any;
+        try {
+          data = JSON.parse(payloadStr);
+        } catch {
+          this.logger.warn(
+            `⚠️ JSON inválido para ${apiKey}. Payload crudo: ${payloadStr}`,
+          );
+          return;
+        }
+
+        // 3) Validar estructura/tipos del payload
+        if (!isValidEstadoPayload(data)) {
+          this.logger.warn(`⚠️ Payload inválido para ${apiKey}: ${payloadStr}`);
+          return;
+        }
+
+        // 4) Normalizar (defaults + timestamp epoch/ms)
+        const normalized = normalizeEstadoPayload(data);
+
+        this.logger.log(`📩 Estado MQTT recibido de ${apiKey}`);
+        this.logger.debug(`Topic: ${topic}`);
+        this.logger.debug(`Payload: ${JSON.stringify(normalized)}`);
+
+        // 5) Persistir en BD
+        await this.actuadoresService.actualizarEstadoPorApiKey(
+          apiKey,
+          normalized,
+        );
+
+        this.logger.log(`✅ Estado actualizado para ${apiKey}`);
+      } catch (err: any) {
+        this.logger.error(
+          `❌ Error procesando ${topic}: ${err?.message ?? err}`,
+        );
       }
     });
   }

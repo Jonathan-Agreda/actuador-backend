@@ -3,7 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleInit,
+  BadRequestException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../data/prisma.service';
@@ -11,8 +11,8 @@ import { WsGateway } from '../websocket/ws/ws.gateway';
 import { ConfigService } from '@nestjs/config';
 import { CreateActuadorDto } from './dto/create-actuador.dto';
 import { Relays } from './types/relays.type';
-import { BadRequestException } from '@nestjs/common';
 import { MqttService } from '../mqtt/mqtt.service';
+import { EstadoLoraPayload } from './types/estado-lora.type';
 
 @Injectable()
 export class ActuadoresService {
@@ -49,6 +49,20 @@ export class ActuadoresService {
     });
   }
 
+  /** Validación rápida de existencia por apiKey (para MQTT) */
+  async getActuadorByApiKey(apiKey: string) {
+    return this.prisma.actuador.findUnique({
+      where: { apiKey },
+      select: {
+        id: true,
+        alias: true,
+        ip: true,
+        apiKey: true,
+        gatewayId: true,
+      },
+    });
+  }
+
   async obtenerGatewayIp(apiKey: string) {
     const actuador = await this.prisma.actuador.findUnique({
       where: { apiKey },
@@ -78,7 +92,7 @@ export class ActuadoresService {
     const topic = `actuadores/${act.apiKey}/comando`;
     const payload = { tipo: 'reiniciar-gateway' };
 
-    // Publicamos el comando por MQTT
+    // Publicamos el comando por MQTT (mantengo tu firma publish(topic, payload, qos))
     this.mqttService.publish(topic, payload, 1);
     this.logger.debug(
       `🟡 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
@@ -94,11 +108,9 @@ export class ActuadoresService {
     if (act.motorEncendido)
       throw new BadRequestException('El motor ya está encendido');
 
-    // Construimos el comando MQTT
     const topic = `actuadores/${act.apiKey}/comando`;
     const payload = { tipo: 'encender-motor' };
 
-    // Publicamos el comando por MQTT
     this.mqttService.publish(topic, payload, 1);
     this.logger.debug(
       `🟢 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
@@ -114,11 +126,9 @@ export class ActuadoresService {
     if (!act.motorEncendido)
       throw new BadRequestException('El motor ya está apagado');
 
-    // Construimos el comando MQTT
     const topic = `actuadores/${act.apiKey}/comando`;
     const payload = { tipo: 'apagar-motor' };
 
-    // Publicamos el comando por MQTT
     this.mqttService.publish(topic, payload, 1);
     this.logger.debug(
       `🟠 MQTT enviado: ${JSON.stringify(payload)} al topic ${topic}`,
@@ -165,7 +175,7 @@ export class ActuadoresService {
     if (act.relays) {
       try {
         relays = JSON.parse(JSON.stringify(act.relays)) as Relays;
-      } catch (e) {
+      } catch {
         this.logger.warn(
           `No se pudo parsear relays del actuador ${act.id}, usando valores por defecto`,
         );
@@ -179,38 +189,50 @@ export class ActuadoresService {
     return relays;
   }
 
-  async actualizarEstadoPorApiKey(apiKey: string, payload: any) {
+  /** Actualiza estado al recibir reporte de un Lora (MQTT o HTTP) */
+  async actualizarEstadoPorApiKey(apiKey: string, payload: EstadoLoraPayload) {
     const actuador = await this.prisma.actuador.findUnique({
       where: { apiKey },
     });
-
     if (!actuador) {
       throw new NotFoundException('Actuador no encontrado con esa API key');
     }
 
-    const ahora = payload.timestamp ? new Date(payload.timestamp) : new Date();
+    const ahora =
+      payload?.timestamp != null
+        ? new Date(
+            typeof payload.timestamp === 'number'
+              ? payload.timestamp
+              : Date.parse(payload.timestamp),
+          )
+        : new Date();
+
+    // Solo campos permitidos (sanitización)
+    const dataUpdate: any = {
+      ultimaActualizacion: ahora,
+      estado: payload.estado ?? 'online',
+      estadoGateway: payload.estadoGateway,
+      relays: payload.relays,
+      motorEncendido: payload.motorEncendido,
+    };
+
+    if (payload.ip) dataUpdate.ip = payload.ip;
 
     await this.prisma.actuador.update({
       where: { id: actuador.id },
-      data: {
-        ip: payload.ip ?? actuador.ip,
-        estado: payload.estado ?? 'online', // opcional si viene desde el Lora
-        estadoGateway: payload.estadoGateway,
-        relays: payload.relays,
-        motorEncendido: payload.motorEncendido,
-        ultimaActualizacion: ahora,
-      },
+      data: dataUpdate,
     });
 
+    // Emitimos hacia el frontend (mantengo tu estructura actual)
     this.wsGateway.emitirEstadosActualizados([
       {
         id: actuador.id,
         alias: actuador.alias,
-        ip: payload.ip ?? actuador.ip,
-        estado: payload.estado ?? 'online',
-        estadoGateway: payload.estadoGateway,
-        relays: payload.relays,
-        motorEncendido: payload.motorEncendido,
+        ip: dataUpdate.ip ?? actuador.ip,
+        estado: dataUpdate.estado,
+        estadoGateway: dataUpdate.estadoGateway,
+        relays: dataUpdate.relays,
+        motorEncendido: dataUpdate.motorEncendido,
         gateway: {
           alias: payload.gatewayAlias ?? 'N/A',
           ip: payload.gatewayIp ?? 'N/A',
