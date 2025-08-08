@@ -14,86 +14,85 @@ datasource db {
 }
 
 model Actuador {
-  id          String   @id @default(uuid())
-  alias       String
-  apiKey      String   @unique
-  latitud     Float
-  longitud    Float
-  ip          String
-  estado      String   @default("offline") // online | offline
+  id                  String    @id @default(uuid())
+  alias               String
+  apiKey              String    @unique
+  latitud             Float
+  longitud            Float
+  ip                  String
+  estado              String    @default("offline") // online | offline
   // 🆕 Nuevos campos
-  estadoGateway String @default("caido") // "ok" | "reiniciando" | "caido"
-  relays             Json?
-  motorEncendido Boolean @default(false)
+  estadoGateway       String    @default("caido") // "ok" | "reiniciando" | "caido"
+  relays              Json?
+  motorEncendido      Boolean   @default(false)
   ultimaActualizacion DateTime?
-  
-  gatewayId   String?
-  empresaId   String?
 
-  gateway     Gateway? @relation(fields: [gatewayId], references: [id])
-  empresa     Empresa? @relation(fields: [empresaId], references: [id])
+  gatewayId String?
+  empresaId String?
+
+  gateway       Gateway?        @relation(fields: [gatewayId], references: [id])
+  empresa       Empresa?        @relation(fields: [empresaId], references: [id])
   GrupoActuador GrupoActuador[]
 
   @@index([gatewayId])
   @@index([empresaId])
+  @@index([estado, ultimaActualizacion], map: "idx_act_estado_lastupdate")
 }
 
 model Gateway {
-  id      String      @id @default(uuid())
-  alias   String
-  ip      String
-  estado  String   @default("ok") // ok | reiniciando | caido
+  id     String @id @default(uuid())
+  alias  String
+  ip     String
+  estado String @default("ok") // ok | reiniciando | caido
 
   actuadores Actuador[]
 }
 
 model Empresa {
-  id        String    @id @default(uuid())
+  id        String  @id @default(uuid())
   nombre    String
   ruc       String?
   direccion String?
 
   actuadores Actuador[]
-  grupos     Grupo[]  // ← añade esta línea para completar la relación
+  grupos     Grupo[] // ← añade esta línea para completar la relación
 }
 
 model Grupo {
-  id        String      @id @default(uuid())
+  id        String @id @default(uuid())
   nombre    String
   empresaId String
 
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  empresa     Empresa  @relation(fields: [empresaId], references: [id])
-  GrupoActuador GrupoActuador[]
+  empresa        Empresa             @relation(fields: [empresaId], references: [id])
+  GrupoActuador  GrupoActuador[]
   programaciones ProgramacionGrupo[]
 }
-
 
 model GrupoActuador {
   grupoId    String
   actuadorId String
 
-  grupo      Grupo    @relation(fields: [grupoId], references: [id])
-  actuador   Actuador @relation(fields: [actuadorId], references: [id])
+  grupo    Grupo    @relation(fields: [grupoId], references: [id])
+  actuador Actuador @relation(fields: [actuadorId], references: [id])
 
   @@id([grupoId, actuadorId])
 }
 
-
 model ProgramacionGrupo {
-  id          String   @id @default(uuid())
-  grupoId     String
-  grupo       Grupo    @relation(fields: [grupoId], references: [id])
-  
-  horaInicio  String   // formato "HH:mm"
-  horaFin     String   // formato "HH:mm"
-  frecuencia  String   // "una_vez" | "diario" | "dias_especificos"
-  dias        String[] // ["lunes", "martes", ...] si aplica
+  id      String @id @default(uuid())
+  grupoId String
+  grupo   Grupo  @relation(fields: [grupoId], references: [id])
 
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  horaInicio String // formato "HH:mm"
+  horaFin    String // formato "HH:mm"
+  frecuencia String // "una_vez" | "diario" | "dias_especificos"
+  dias       String[] // ["lunes", "martes", ...] si aplica
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
 
   @@index([grupoId])
 }
